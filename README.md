@@ -1,10 +1,14 @@
 # elixir_elastic
 
-既存の Elasticsearch に保存したログを Elixir からキーワード検索するアプリです。
-参照元の Flask 版 `naritomo08/flask_elastic` と同じく、デフォルトでは `http://elastic1:9200` の `logs-*` を検索します。
+既存の Elasticsearch に保存したログを Flask からキーワード検索するアプリです。
+Elasticsearch は以下の記事の構成で作成済みのものを利用します。
 
-検索対象フィールドは `msg`、ログ種別は `logs-syslog-*` / `logs-authlog-*` から判定します。
-Compose では `elastic1` を `192.168.11.20` に解決する設定を入れています。
+https://qiita.com/naritomo08/items/8368c2f57803e471cc2f
+
+記事の構成に合わせて、デフォルトでは `http://elastic1:9200` の `logs-*` を検索します。
+キーワード検索の対象フィールドは `msg` です。
+検索結果では `logs-syslog-*` / `logs-authlog-*` のどちらに由来するログかを表示します。
+記事内の例に合わせて、Compose では `elastic1` を `192.168.11.20` に解決する設定を入れています。
 
 ## 起動
 
