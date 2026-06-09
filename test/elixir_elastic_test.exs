@@ -1,0 +1,92 @@
+defmodule ElixirElasticTest do
+  use ExUnit.Case, async: true
+
+  alias ElixirElastic.ElasticSearch
+  alias ElixirElastic.HTML
+  alias ElixirElastic.Router
+
+  test "format_timestamp converts epoch millis to JST" do
+    assert ElasticSearch.format_timestamp(1_780_398_715_000) == "2026/06/02 20:11:55 JST"
+  end
+
+  test "datetime_local_to_iso treats input as JST" do
+    assert ElasticSearch.datetime_local_to_iso("2026-06-02T20:11") == "2026-06-02T11:11:00Z"
+  end
+
+  test "detect_log_type from index name" do
+    assert ElasticSearch.detect_log_type(".ds-logs-syslog-2026.06.02-000001") == "syslog"
+    assert ElasticSearch.detect_log_type(".ds-logs-authlog-2026.06.02-000001") == "authlog"
+    assert ElasticSearch.detect_log_type("metrics-2026.06.02") == "unknown"
+  end
+
+  test "build_query with message program host and time range" do
+    filters = %{
+      "time_from" => "2026-06-02T20:00",
+      "time_to" => "2026-06-02T21:00",
+      "log_type" => "syslog",
+      "host" => "flink1",
+      "program" => "systemd",
+      "message" => "sshd"
+    }
+
+    query = ElasticSearch.build_query(filters)
+
+    assert get_in(query, [:bool, :must]) |> hd() ==
+             %{
+               bool: %{
+                 should: [
+                   %{match: %{"msg" => %{query: "sshd"}}},
+                   %{match_phrase: %{"msg" => %{query: "sshd"}}}
+                 ],
+                 minimum_should_match: 1
+               }
+             }
+
+    assert %{wildcard: %{"host" => %{value: "*flink1*", case_insensitive: true}}} in query.bool.filter
+
+    assert %{range: %{"@timestamp" => %{"gte" => "2026-06-02T11:00:00Z", "lte" => "2026-06-02T12:00:00Z"}}} in query.bool.filter
+  end
+
+  test "index pattern switches by log type" do
+    assert ElasticSearch.index_pattern_for_log_type("syslog") == "logs-syslog-*"
+    assert ElasticSearch.index_pattern_for_log_type("authlog") == "logs-authlog-*"
+    assert ElasticSearch.index_pattern_for_log_type("") == "logs-*"
+  end
+
+  test "normalize_filters trims missing and submitted values" do
+    assert Router.normalize_filters(%{"program" => " systemd ", "message" => " sshd "}) == %{
+             "time_from" => "",
+             "time_to" => "",
+             "log_type" => "",
+             "host" => "",
+             "program" => "systemd",
+             "message" => "sshd"
+           }
+  end
+
+  test "rendered search page includes filters and result fields" do
+    html =
+      HTML.render_index(
+        %{"time_from" => "", "time_to" => "", "log_type" => "syslog", "host" => "", "program" => "systemd", "message" => "sshd"},
+        [
+          %{
+            "display_time" => "2026/06/02 20:11:55 JST",
+            "log_type" => "syslog",
+            "host" => "flink1",
+            "program" => "systemd",
+            "msg" => "Reached target sshd-keygen.target."
+          }
+        ],
+        true
+      )
+
+    assert html =~ ~s(method="post")
+    assert html =~ ~s(id="search-form")
+    assert html =~ ~s(id="results-summary")
+    assert html =~ ~s(id="results-body")
+    assert html =~ ~s(src="/static/search.js")
+    assert html =~ ~s(value="systemd")
+    assert html =~ ~s(value="sshd")
+    assert html =~ "2026/06/02 20:11:55 JST"
+  end
+end
