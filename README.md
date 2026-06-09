@@ -34,6 +34,14 @@ curl http://localhost:5002/health
 
 ## テスト
 
+テストは `test/elixir_elastic_test.exs` にまとめています。外部の Elasticsearch には接続せず、以下のようなアプリ内部の処理を確認します。
+
+- epoch millis から JST 表示への変換
+- `datetime-local` 入力を JST として扱い、Elasticsearch 用の UTC ISO 文字列へ変換する処理
+- インデックス名や検索条件からのログ種別判定
+- メッセージ、ホスト、プログラム、時刻範囲を含む Elasticsearch クエリ生成
+- 検索画面 HTML にフォーム、静的 JS、検索結果が含まれること
+
 ローカルに Elixir がある場合:
 
 ```bash
