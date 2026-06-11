@@ -19,7 +19,7 @@ defmodule ElixirElasticTest do
     assert ElasticSearch.detect_log_type("metrics-2026.06.02") == "unknown"
   end
 
-  test "build_query with message program host and time range" do
+  test "build_query with message and exact program host filters and time range" do
     filters = %{
       "time_from" => "2026-06-02T20:00",
       "time_to" => "2026-06-02T21:00",
@@ -42,7 +42,25 @@ defmodule ElixirElasticTest do
                }
              }
 
-    assert %{wildcard: %{"host" => %{value: "*flink1*", case_insensitive: true}}} in query.bool.filter
+    assert %{
+             bool: %{
+               should: [
+                 %{term: %{"host" => "flink1"}},
+                 %{term: %{"host.keyword" => "flink1"}}
+               ],
+               minimum_should_match: 1
+             }
+           } in query.bool.filter
+
+    assert %{
+             bool: %{
+               should: [
+                 %{term: %{"program" => "systemd"}},
+                 %{term: %{"program.keyword" => "systemd"}}
+               ],
+               minimum_should_match: 1
+             }
+           } in query.bool.filter
 
     assert %{range: %{"@timestamp" => %{"gte" => "2026-06-02T11:00:00Z", "lte" => "2026-06-02T12:00:00Z"}}} in query.bool.filter
   end

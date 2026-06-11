@@ -46,11 +46,11 @@ defmodule ElixirElastic.ElasticSearch do
     must =
       []
       |> append_match(filters["message"], "msg")
-      |> append_match(filters["program"], "program")
 
     filter_clauses =
       []
-      |> append_host_filter(filters["host"])
+      |> append_exact_filter(filters["host"], "host")
+      |> append_exact_filter(filters["program"], "program")
       |> append_time_filter(filters["time_from"], filters["time_to"])
 
     cond do
@@ -136,11 +136,22 @@ defmodule ElixirElastic.ElasticSearch do
       ]
   end
 
-  defp append_host_filter(filters, nil), do: filters
-  defp append_host_filter(filters, ""), do: filters
+  defp append_exact_filter(filters, nil, _field), do: filters
+  defp append_exact_filter(filters, "", _field), do: filters
 
-  defp append_host_filter(filters, host) do
-    filters ++ [%{wildcard: %{"host" => %{value: "*#{host}*", case_insensitive: true}}}]
+  defp append_exact_filter(filters, value, field) do
+    filters ++
+      [
+        %{
+          bool: %{
+            should: [
+              %{term: %{field => value}},
+              %{term: %{"#{field}.keyword" => value}}
+            ],
+            minimum_should_match: 1
+          }
+        }
+      ]
   end
 
   defp append_time_filter(filters, "", ""), do: filters
