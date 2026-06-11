@@ -127,7 +127,7 @@ defmodule ElixirElastic.ElasticSearch do
         %{
           bool: %{
             should: [
-              %{match: %{field => %{query: value}}},
+              %{match: %{field => %{query: value, operator: "and"}}},
               %{match_phrase: %{field => %{query: value}}}
             ],
             minimum_should_match: 1

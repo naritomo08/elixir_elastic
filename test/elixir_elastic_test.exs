@@ -35,7 +35,7 @@ defmodule ElixirElasticTest do
              %{
                bool: %{
                  should: [
-                   %{match: %{"msg" => %{query: "sshd"}}},
+                   %{match: %{"msg" => %{query: "sshd", operator: "and"}}},
                    %{match_phrase: %{"msg" => %{query: "sshd"}}}
                  ],
                  minimum_should_match: 1
@@ -45,6 +45,23 @@ defmodule ElixirElasticTest do
     assert %{wildcard: %{"host" => %{value: "*flink1*", case_insensitive: true}}} in query.bool.filter
 
     assert %{range: %{"@timestamp" => %{"gte" => "2026-06-02T11:00:00Z", "lte" => "2026-06-02T12:00:00Z"}}} in query.bool.filter
+  end
+
+  test "build_query searches all message terms when message contains spaces" do
+    query = ElasticSearch.build_query(%{"message" => "authlog forward test from"})
+
+    assert get_in(query, [:bool, :must]) ==
+             [
+               %{
+                 bool: %{
+                   should: [
+                     %{match: %{"msg" => %{query: "authlog forward test from", operator: "and"}}},
+                     %{match_phrase: %{"msg" => %{query: "authlog forward test from"}}}
+                   ],
+                   minimum_should_match: 1
+                 }
+               }
+             ]
   end
 
   test "index pattern switches by log type" do
