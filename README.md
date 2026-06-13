@@ -44,7 +44,7 @@ curl http://localhost:5002/health
 - `datetime-local` 入力を JST として扱い、Elasticsearch 用の UTC ISO 文字列へ変換する処理
 - インデックス名や検索条件からのログ種別判定
 - メッセージ、ホスト、プログラム、時刻範囲を含む Elasticsearch クエリ生成
-- 検索画面 HTML にフォーム、静的 JS、検索結果が含まれること
+- 静的な検索画面 HTML にフォームと JS の読み込みが含まれること
 
 ローカルに Elixir がある場合:
 
@@ -66,4 +66,3 @@ docker run --rm elixir-elastic-build sh -c "MIX_ENV=test mix deps.get && mix tes
 
 - `ELASTICSEARCH_URL`: Elasticsearch の URL
 - `ELASTICSEARCH_INDEX`: 検索対象のインデックスパターン
-- `SESSION_SECRET`: 画面検索条件をセッションに保存するための秘密鍵

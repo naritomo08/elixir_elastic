@@ -2,7 +2,6 @@ defmodule ElixirElasticTest do
   use ExUnit.Case, async: true
 
   alias ElixirElastic.ElasticSearch
-  alias ElixirElastic.HTML
   alias ElixirElastic.Router
 
   test "format_timestamp converts epoch millis to JST" do
@@ -99,29 +98,13 @@ defmodule ElixirElasticTest do
            }
   end
 
-  test "rendered search page includes filters and result fields" do
-    html =
-      HTML.render_index(
-        %{"time_from" => "", "time_to" => "", "log_type" => "syslog", "host" => "", "program" => "systemd", "message" => "sshd"},
-        [
-          %{
-            "display_time" => "2026/06/02 20:11:55 JST",
-            "log_type" => "syslog",
-            "host" => "flink1",
-            "program" => "systemd",
-            "msg" => "Reached target sshd-keygen.target."
-          }
-        ],
-        true
-      )
+  test "static index page includes search UI hooks" do
+    html = File.read!("priv/static/index.html")
 
     assert html =~ ~s(method="post")
     assert html =~ ~s(id="search-form")
     assert html =~ ~s(id="results-summary")
     assert html =~ ~s(id="results-body")
     assert html =~ ~s(src="/static/search.js")
-    assert html =~ ~s(value="systemd")
-    assert html =~ ~s(value="sshd")
-    assert html =~ "2026/06/02 20:11:55 JST"
   end
 end
