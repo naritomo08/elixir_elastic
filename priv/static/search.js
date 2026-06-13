@@ -20,6 +20,10 @@ function formParams() {
   return params;
 }
 
+function paramsObject(params) {
+  return Object.fromEntries(params.entries());
+}
+
 function fillFormFromParams(params) {
   for (const name of filters) {
     const field = searchForm.elements[name];
@@ -138,7 +142,13 @@ async function loadLogTypes() {
 async function search(params) {
   showLoading();
 
-  const response = await fetch(`/api/logs?${params.toString()}`);
+  const response = await fetch("/api/logs", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(paramsObject(params)),
+  });
 
   if (!response.ok) {
     throw new Error("検索に失敗しました。");

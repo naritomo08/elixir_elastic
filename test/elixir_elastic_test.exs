@@ -107,4 +107,14 @@ defmodule ElixirElasticTest do
     assert html =~ ~s(id="results-body")
     assert html =~ ~s(src="/static/search.js")
   end
+
+  test "static search script posts search filters as json" do
+    js = File.read!("priv/static/search.js")
+
+    assert js =~ ~s(fetch("/api/logs")
+    assert js =~ ~s(method: "POST")
+    assert js =~ ~s("Content-Type": "application/json")
+    assert js =~ ~s(body: JSON.stringify(paramsObject(params)))
+    refute js =~ ~s(fetch(`/api/logs?)
+  end
 end
