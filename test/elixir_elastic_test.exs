@@ -116,5 +116,6 @@ defmodule ElixirElasticTest do
     assert js =~ ~s("Content-Type": "application/json")
     assert js =~ ~s(body: JSON.stringify(paramsObject(params)))
     refute js =~ ~s(fetch(`/api/logs?)
+    refute js =~ ~s(`/?${params.toString()}`)
   end
 end

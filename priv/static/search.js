@@ -166,6 +166,7 @@ if (searchForm && resultsSummary && resultsBody && clearLink && logTypeSelect) {
       fillFormFromParams(initialParams);
 
       if (initialParams.toString()) {
+        history.replaceState(null, "", "/");
         return search(initialParams);
       }
 
@@ -177,7 +178,7 @@ if (searchForm && resultsSummary && resultsBody && clearLink && logTypeSelect) {
     event.preventDefault();
 
     const params = formParams();
-    history.replaceState(null, "", params.toString() ? `/?${params.toString()}` : "/");
+    history.replaceState(null, "", "/");
 
     search(params).catch((error) => showError(error.message));
   });
