@@ -1,18 +1,10 @@
 const searchForm = document.getElementById("search-form");
 const resultsSummary = document.getElementById("results-summary");
-const resultsBody = document.getElementById("results-body");
+let resultsBody = document.getElementById("results-body");
 const clearLink = document.getElementById("clear-link");
 const logTypeSelect = searchForm?.querySelector('select[name="log_type"]');
 
 const filters = ["time_from", "time_to", "log_type", "host", "program", "message"];
-
-function escapeHtml(value) {
-  return String(value ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
-}
 
 function formParams() {
   const params = new URLSearchParams();
@@ -38,52 +30,92 @@ function fillFormFromParams(params) {
   }
 }
 
+function setSummary(...items) {
+  resultsSummary.replaceChildren(...items.map((item) => {
+    const span = document.createElement("span");
+    span.textContent = item;
+    return span;
+  }));
+}
+
+function emptyMessage(message, className = "empty") {
+  const element = document.createElement("p");
+  element.id = "results-body";
+  element.className = className;
+  element.textContent = message;
+  return element;
+}
+
+function replaceResultsBody(element) {
+  resultsBody.replaceWith(element);
+  resultsBody = element;
+}
+
 function showLoading() {
-  resultsSummary.innerHTML = "<span>検索中</span>";
-  resultsBody.className = "empty searching";
-  resultsBody.textContent = "検索中";
+  setSummary("検索中");
+  replaceResultsBody(emptyMessage("検索中", "empty searching"));
 }
 
 function showError(message) {
-  resultsSummary.innerHTML = "<span>検索エラー</span>";
-  resultsBody.className = "empty";
-  resultsBody.textContent = message;
+  setSummary("検索エラー");
+  replaceResultsBody(emptyMessage(message));
 }
 
 function renderLogs(logs) {
+  setSummary(`${logs.length} 件`, "最新50件のみ表示");
+
   if (logs.length === 0) {
-    resultsSummary.innerHTML = "<span>0 件</span><span>最新50件のみ表示</span>";
-    resultsBody.className = "empty";
-    resultsBody.textContent = "該当するログはありません。";
+    replaceResultsBody(emptyMessage("該当するログはありません。"));
     return;
   }
 
-  resultsSummary.innerHTML = `<span>${logs.length} 件</span><span>最新50件のみ表示</span>`;
-  resultsBody.className = "table-wrap";
-  resultsBody.innerHTML = `
-    <table>
-      <thead>
-        <tr>
-          <th>Time</th>
-          <th>Log</th>
-          <th>Host</th>
-          <th>Program</th>
-          <th>Message</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${logs.map((log) => `
-          <tr>
-            <td>${escapeHtml(log.display_time)}</td>
-            <td><span class="log-type log-type-${escapeHtml(log.log_type || "unknown")}">${escapeHtml(log.log_type || "unknown")}</span></td>
-            <td>${escapeHtml(log.host)}</td>
-            <td>${escapeHtml(log.program)}</td>
-            <td>${escapeHtml(log.msg)}</td>
-          </tr>
-        `).join("")}
-      </tbody>
-    </table>
-  `;
+  const wrapper = document.createElement("div");
+  wrapper.id = "results-body";
+  wrapper.className = "table-wrap";
+
+  const table = document.createElement("table");
+  const thead = document.createElement("thead");
+  const headerRow = document.createElement("tr");
+  ["Time", "Log", "Host", "Program", "Message"].forEach((label) => {
+    const th = document.createElement("th");
+    th.textContent = label;
+    headerRow.append(th);
+  });
+  thead.append(headerRow);
+
+  const tbody = document.createElement("tbody");
+  logs.forEach((log) => {
+    const row = document.createElement("tr");
+    appendCell(row, log.display_time || "");
+    appendLogTypeCell(row, log.log_type || "unknown");
+    appendCell(row, log.host || "");
+    appendCell(row, log.program || "");
+    appendCell(row, log.msg || "");
+    tbody.append(row);
+  });
+
+  table.append(thead, tbody);
+  wrapper.append(table);
+  replaceResultsBody(wrapper);
+}
+
+function appendCell(row, value) {
+  const cell = document.createElement("td");
+  cell.textContent = value;
+  row.append(cell);
+}
+
+function appendLogTypeCell(row, value) {
+  const cell = document.createElement("td");
+  const badge = document.createElement("span");
+  badge.className = `log-type log-type-${cssToken(value)}`;
+  badge.textContent = value;
+  cell.append(badge);
+  row.append(cell);
+}
+
+function cssToken(value) {
+  return String(value).toLowerCase().replace(/[^a-z0-9_-]/g, "-") || "unknown";
 }
 
 async function loadLogTypes() {
@@ -144,8 +176,7 @@ if (searchForm && resultsSummary && resultsBody && clearLink && logTypeSelect) {
     event.preventDefault();
     searchForm.reset();
     history.replaceState(null, "", "/");
-    resultsSummary.innerHTML = "<span>検索を実施してください</span>";
-    resultsBody.className = "empty";
-    resultsBody.textContent = "検索条件を入力して検索ボタンを押してください。";
+    setSummary("検索を実施してください");
+    replaceResultsBody(emptyMessage("検索条件を入力して検索ボタンを押してください。"));
   });
 }
