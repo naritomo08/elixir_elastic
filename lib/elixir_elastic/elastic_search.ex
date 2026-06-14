@@ -100,7 +100,8 @@ defmodule ElixirElastic.ElasticSearch do
 
   def datetime_local_to_iso(value) do
     with {:ok, naive} <- NaiveDateTime.from_iso8601(add_seconds(value)),
-         {:ok, utc} <- DateTime.from_naive(NaiveDateTime.add(naive, -@jst_offset_seconds, :second), "Etc/UTC") do
+         {:ok, utc} <-
+           DateTime.from_naive(NaiveDateTime.add(naive, -@jst_offset_seconds, :second), "Etc/UTC") do
       DateTime.to_iso8601(utc)
     else
       _ -> value
@@ -116,7 +117,9 @@ defmodule ElixirElastic.ElasticSearch do
   end
 
   def index_pattern_for_log_type(log_type) when log_type in @log_types, do: "logs-#{log_type}-*"
-  def index_pattern_for_log_type(_log_type), do: Application.fetch_env!(:elixir_elastic, :elasticsearch_index)
+
+  def index_pattern_for_log_type(_log_type),
+    do: Application.fetch_env!(:elixir_elastic, :elasticsearch_index)
 
   defp append_match(must, nil, _field), do: must
   defp append_match(must, "", _field), do: must
@@ -128,7 +131,20 @@ defmodule ElixirElastic.ElasticSearch do
           bool: %{
             should: [
               %{match: %{field => %{query: value, operator: "and"}}},
-              %{match_phrase: %{field => %{query: value}}}
+              %{match_phrase: %{field => %{query: value}}},
+              %{
+                wildcard: %{
+                  "#{field}.keyword" => %{
+                    value: "*#{wildcard_escape(value)}*",
+                    case_insensitive: true
+                  }
+                }
+              },
+              %{
+                wildcard: %{
+                  field => %{value: "*#{wildcard_escape(value)}*", case_insensitive: true}
+                }
+              }
             ],
             minimum_should_match: 1
           }
@@ -169,6 +185,13 @@ defmodule ElixirElastic.ElasticSearch do
   defp maybe_put(map, _key, ""), do: map
   defp maybe_put(map, _key, nil), do: map
   defp maybe_put(map, key, value), do: Map.put(map, key, value)
+
+  defp wildcard_escape(value) do
+    value
+    |> String.replace("\\", "\\\\")
+    |> String.replace("*", "\\*")
+    |> String.replace("?", "\\?")
+  end
 
   defp format_hit(hit) do
     source = Map.get(hit, "_source", %{})

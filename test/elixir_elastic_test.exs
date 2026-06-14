@@ -35,7 +35,9 @@ defmodule ElixirElasticTest do
                bool: %{
                  should: [
                    %{match: %{"msg" => %{query: "sshd", operator: "and"}}},
-                   %{match_phrase: %{"msg" => %{query: "sshd"}}}
+                   %{match_phrase: %{"msg" => %{query: "sshd"}}},
+                   %{wildcard: %{"msg.keyword" => %{value: "*sshd*", case_insensitive: true}}},
+                   %{wildcard: %{"msg" => %{value: "*sshd*", case_insensitive: true}}}
                  ],
                  minimum_should_match: 1
                }
@@ -61,7 +63,11 @@ defmodule ElixirElasticTest do
              }
            } in query.bool.filter
 
-    assert %{range: %{"@timestamp" => %{"gte" => "2026-06-02T11:00:00Z", "lte" => "2026-06-02T12:00:00Z"}}} in query.bool.filter
+    assert %{
+             range: %{
+               "@timestamp" => %{"gte" => "2026-06-02T11:00:00Z", "lte" => "2026-06-02T12:00:00Z"}
+             }
+           } in query.bool.filter
   end
 
   test "build_query searches all message terms when message contains spaces" do
@@ -73,12 +79,45 @@ defmodule ElixirElasticTest do
                  bool: %{
                    should: [
                      %{match: %{"msg" => %{query: "authlog forward test from", operator: "and"}}},
-                     %{match_phrase: %{"msg" => %{query: "authlog forward test from"}}}
+                     %{match_phrase: %{"msg" => %{query: "authlog forward test from"}}},
+                     %{
+                       wildcard: %{
+                         "msg.keyword" => %{
+                           value: "*authlog forward test from*",
+                           case_insensitive: true
+                         }
+                       }
+                     },
+                     %{
+                       wildcard: %{
+                         "msg" => %{
+                           value: "*authlog forward test from*",
+                           case_insensitive: true
+                         }
+                       }
+                     }
                    ],
                    minimum_should_match: 1
                  }
                }
              ]
+  end
+
+  test "build_query supports partial IP address message searches" do
+    query = ElasticSearch.build_query(%{"message" => "192.168.11."})
+    should = query |> get_in([:bool, :must]) |> hd() |> get_in([:bool, :should])
+
+    assert %{
+             wildcard: %{
+               "msg.keyword" => %{value: "*192.168.11.*", case_insensitive: true}
+             }
+           } in should
+
+    assert %{
+             wildcard: %{
+               "msg" => %{value: "*192.168.11.*", case_insensitive: true}
+             }
+           } in should
   end
 
   test "index pattern switches by log type" do
@@ -111,11 +150,11 @@ defmodule ElixirElasticTest do
   test "static search script posts search filters as json" do
     js = File.read!("priv/static/search.js")
 
-    assert js =~ ~s(fetch("/api/logs")
-    assert js =~ ~s(method: "POST")
-    assert js =~ ~s("Content-Type": "application/json")
-    assert js =~ ~s(body: JSON.stringify(paramsObject(params)))
-    refute js =~ ~s(fetch(`/api/logs?)
-    refute js =~ ~s(`/?${params.toString()}`)
+    assert js =~ ~S|fetch("/api/logs"|
+    assert js =~ ~S|method: "POST"|
+    assert js =~ ~S|"Content-Type": "application/json"|
+    assert js =~ ~S|body: JSON.stringify(paramsObject(params))|
+    refute js =~ ~S|fetch(`/api/logs?|
+    refute js =~ ~S|`/?${params.toString()}`|
   end
 end
